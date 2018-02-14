@@ -1,0 +1,22 @@
+{
+  "name": "homebridge-echonet",
+  "version": "1.0.0",
+  "description": "HomeBridge plugin for EchonetLite by node-echonet-lite",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/TakekazuKATO/homebridge-echonet.git"
+  },
+  "author": "Takekazu KATO",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/TakekazuKATO/homebridge-echonet/issues"
+  },
+  "homepage": "https://github.com/TakekazuKATO/homebridge-echonet#readme",
+  "devDependencies": {
+    "node-echonet-lite": "^0.2.0"
+  }
+}
