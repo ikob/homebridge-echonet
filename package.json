@@ -22,7 +22,7 @@
   "devDependencies": {
     "@types/node": "^9.4.6",
     "hap-nodejs": "^0.4.41",
-    "node-echonet-lite": "^0.2.0",
+    "node-echonet-lite": "git+https://github.com/TakekazuKATO/node-echonet-lite.git#addparsers",
     "typescript": "^2.7.1"
   },
   "engines": {
