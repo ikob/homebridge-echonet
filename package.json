@@ -11,19 +11,17 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/TakekazuKATO/homebridge-echonet.git"
+    "url": "git+https://github.com/reubenbijl/homebridge-echonet"
   },
-  "author": "Takekazu KATO",
+  "author": "Reuben Bij",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/TakekazuKATO/homebridge-echonet/issues"
+    "url": "https://github.com/reubenbijl/homebridge-echonet/issues"
   },
-  "homepage": "https://github.com/TakekazuKATO/homebridge-echonet#readme",
+  "homepage": "https://github.com/reubenbijl/homebridge-echonet#readme",
   "devDependencies": {
-    "@types/node": "^9.4.6",
     "hap-nodejs": "^0.4.41",
-    "node-echonet-lite": "git+https://github.com/TakekazuKATO/node-echonet-lite.git#addparsers",
-    "typescript": "^2.7.1"
+    "node-echonet-lite": "git+https://github.com/TakekazuKATO/node-echonet-lite.git#addparsers"
   },
   "engines": {
     "node": ">=0.12.0",
