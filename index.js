@@ -47,14 +47,17 @@ var EchonetPlatform = /** @class */ (function () {
                             _this.log(err);
                         else {
                             var uid = void 0;
+                            var vendor = void 0;
                             if (res['message']['data']) {
                                 uid = res['message']['data']['uid'];
+                                vendor = res['message']['data']['name'];
                             }
                             else {
                                 uid = address_1 + ':' + count_1;
                                 count_1 = count_1 + 1;
+                                vendor = "Unknown"
                             }
-                            _this.addAccessory(device_1, address_1, eoj, uid);
+                            _this.addAccessory(device_1, address_1, eoj, uid, vendor);
                         }
                     });
                 };
@@ -88,7 +91,7 @@ var EchonetPlatform = /** @class */ (function () {
         this.log("Request: ", JSON.stringify(request));
     };
     // Echonet function to show how developer can add accessory dynamically from outside event
-    EchonetPlatform.prototype.addAccessory = function (device, address, eoj, uid) {
+    EchonetPlatform.prototype.addAccessory = function (device, address, eoj, uid, vendor) {
         var _this = this;
         var platform = this;
         var uuid = UUIDGen.generate(uid);
@@ -100,8 +103,8 @@ var EchonetPlatform = /** @class */ (function () {
         var accessory = this.accessories.get(uuid) || new Accessory(className, uuid);
 
         accessory.getService(Service.AccessoryInformation)
-			.setCharacteristic(Characteristic.Manufacturer, "Mitsubishi")
-			.setCharacteristic(Characteristic.Model, "MSZ-EF35VE2")
+			.setCharacteristic(Characteristic.Manufacturer, vendor)
+			.setCharacteristic(Characteristic.Model, "Unknown")
 			.setCharacteristic(Characteristic.SerialNumber, address);
         
         
@@ -113,7 +116,35 @@ var EchonetPlatform = /** @class */ (function () {
         this.log("setup accessory " + className + ", " + uid);
         // Plugin can save context on accessory to help restore accessory in configureAccessory()
         // newAccessory.context.something = "Something"
-		if (group_code == 0x01 && class_code == 0x30) {
+	    if (group_code == 0x02 && class_code == 0x91) {
+		var service = accessory.getService(Service.Lightbulb) || accessory.addService(Service.Lightbulb);
+		service.getCharacteristic(Characteristic.On).on('get', function (callback) {
+		    _this.el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+                        _this.log('get simple light state '+className);
+                        _this.log(res['message']['data'])
+			if(err){
+				_this.log(err);
+				callback(err);
+				return;
+			}
+			if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+			    callback(null, 0);
+			    return;
+			}else{
+			    callback(null, 1);
+			    return;
+			}
+		    });
+		}).on('set', function( value, callback) {
+                        _this.log('set simple light state '+className);
+                        _this.log(value)
+			limiter.removeTokens(1, function() {
+			    _this.el.setPropertyValue(address, eoj, 0x80, { 'status': value });
+			});
+			callback(null);
+                });
+	    }
+	    else if (group_code == 0x01 && class_code == 0x30) {
             //エアコン
             this.el.setPropertyValue(address, eoj, 0xB1, { 'auto': false });
             var service = accessory.getService(Service.Thermostat) || accessory.addService(Service.Thermostat);
