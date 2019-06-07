@@ -209,7 +209,7 @@ var EchonetPlatform = /** @class */ (function () {
             }).on('set', function (value, callback) {
                 _this.log('set target temperature ' + className + ' ' + value);
                 limiter.removeTokens(1, function() {
-                	_this.el.setPropertyValue(address, eoj, 0xB3, { 'temperature': value });
+                	_this.el.setPropertyValue(address, eoj, 0xB3, { 'temperature': parseInt(value)});
                 });
                 callback(null);
             });
