@@ -116,7 +116,35 @@ var EchonetPlatform = /** @class */ (function () {
         this.log("setup accessory " + className + ", " + uid);
         // Plugin can save context on accessory to help restore accessory in configureAccessory()
         // newAccessory.context.something = "Something"
-	    if (group_code == 0x02 && class_code == 0x91) {
+            if (group_code == 0x05 && class_code == 0xFD) {
+                var service = accessory.getService(Service.Switch) || accessory.addService(Service.Switch);
+                service.getCharacteristic(Characteristic.On).on('get', function (callback) {
+                    _this.el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+                        _this.log('get switch state '+className);
+                        _this.log(res['message']['data'])
+                        if(err){
+                                _this.log(err);
+                                callback(err);
+                                return;
+                        }
+                        if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+                            callback(null, 0);
+                            return;
+                        }else{
+                            callback(null, 1);
+                            return;
+                        }
+                    });
+                }).on('set', function( value, callback) {
+                        _this.log('set switch state '+className);
+                        _this.log(value)
+                        limiter.removeTokens(1, function() {
+                            _this.el.setPropertyValue(address, eoj, 0x80, { 'status': value });
+                        });
+                        callback(null);
+                });
+            }
+            else if (group_code == 0x02 && class_code == 0x91) {
 		var service = accessory.getService(Service.Lightbulb) || accessory.addService(Service.Lightbulb);
 		service.getCharacteristic(Characteristic.On).on('get', function (callback) {
 		    _this.el.getPropertyValue(address, eoj, 0x80, function (err, res) {
@@ -181,7 +209,7 @@ var EchonetPlatform = /** @class */ (function () {
             }).on('set', function (value, callback) {
                 _this.log('set target temperature ' + className + ' ' + value);
                 limiter.removeTokens(1, function() {
-                	_this.el.setPropertyValue(address, eoj, 0xB3, { 'temperature': value });
+                	_this.el.setPropertyValue(address, eoj, 0xB3, { 'temperature': parseInt(value)});
                 });
                 callback(null);
             });
