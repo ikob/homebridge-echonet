@@ -12,69 +12,90 @@ const GC_SIMPLELIGHT = 0x0291;
 const GC_AIRCON = 0x0130;
 const GC_DOORBELL = 0x0008;
 
-class EchonetDevs{
-    static jema(className, el, accessory, address, eoj, log){
-        var service = accessory.getService(Service.Switch) || accessory.addService(Service.Switch);
-        service.getCharacteristic(Characteristic.On).on('get', function (callback) {
-            el.getPropertyValue(address, eoj, 0x80, function (err, res) {
-                log('get switch state '+className);
-                log(res['message']['data'])
-                if(err){
-                        log(err);
-                        callback(err);
-                        return;
-                }
-                if (res['message']['data'] == null || (!res['message']['data']['status'])) {
-                    callback(null, 0);
-                    return;
-                }else{
-                    callback(null, 1);
-                    return;
-                }
-            });
-        }).on('set', function( value, callback) {
-            log('set switch state '+className);
-            log(value)
-            limiter.removeTokens(1, function() {
-                el.setPropertyValue(address, eoj, 0x80, { 'status': value });
-            });
-            callback(null);
-        });
-    };
-    static simplelight(className, el, accessory, address, eoj, log){
-        var service = accessory.getService(Service.Lightbulb) || accessory.addService(Service.Lightbulb);
-        service.getCharacteristic(Characteristic.On).on('get', function (callback) {
-            el.getPropertyValue(address, eoj, 0x80, function (err, res) {
-                log('get simple light state '+className);
-                log(res['message']['data'])
-                if(err){
+var EchonetDevs = function(){};
+EchonetDevs.doorbell = function(className, el, accessory, address, eoj, log){
+    var service = accessory.getService(Service.MotionSensor) || accessory.addService(Service.MotionSensor);
+    var state = true;
+    service.getCharacteristic(Characteristic.MotionDetected).on('get', function (callback) {
+        callback(null, state);
+        return;
+    });
+    el.el_accessories.set(address.toString() + eoj.toString(), function(res){
+        log('VisitingSensor', res['message']);
+        service.setCharacteristic(Characteristic.MotionDetected, state);
+    });
+    // For testing, on/off every 3 seconds.
+    // https://github.com/homebridge/HAP-NodeJS/blob/8c8e84efb1f2e62f4af36e2e120d4c90a6473006/src/accessories/TemperatureSensor_accessory.ts
+    setInterval(function() {
+        state = !state;
+        service
+            .setCharacteristic(Characteristic.MotionDetected, state);
+
+    }, 3000);
+};
+
+EchonetDevs.jema = function(className, el, accessory, address, eoj, log){
+    var service = accessory.getService(Service.Switch) || accessory.addService(Service.Switch);
+    service.getCharacteristic(Characteristic.On).on('get', function (callback) {
+        el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+            log('get switch state '+className);
+            log(res['message']['data']);
+            if(err){
                     log(err);
                     callback(err);
                     return;
-                }
-                if (res['message']['data'] == null || (!res['message']['data']['status'])) {
-                    callback(null, 0);
-                    return;
-                }else{
-                    callback(null, 1);
-                    return;
-                }
-            });
-        }).on('set', function( value, callback) {
-            log('set simple light state '+className);
-            log(value)
-            limiter.removeTokens(1, function() {
-                el.setPropertyValue(address, eoj, 0x80, { 'status': value });
-            });
-            callback(null);
-         });
-    };
-    static aircon(className, el, accessory, address, eoj, log){
-        el.setPropertyValue(address, eoj, 0xB1, { 'auto': false });
-        var service = accessory.getService(Service.Thermostat) || accessory.addService(Service.Thermostat);
-        service.getCharacteristic(Characteristic.TargetTemperature).on('get', function (callback) {
-            limiter.removeTokens(1, function() {
-                el.getPropertyValue(address, eoj, 0xB3, function (err, res) {
+            }
+            if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+                callback(null, 0);
+                return;
+            }else{
+                callback(null, 1);
+                return;
+            }
+        });
+    }).on('set', function( value, callback) {
+        log('set switch state '+className);
+        log(value)
+        limiter.removeTokens(1, function() {
+            el.setPropertyValue(address, eoj, 0x80, { 'status': value });
+        });
+        callback(null);
+    });
+};
+EchonetDevs.simplelight = function(className, el, accessory, address, eoj, log){
+    var service = accessory.getService(Service.Lightbulb) || accessory.addService(Service.Lightbulb);
+    service.getCharacteristic(Characteristic.On).on('get', function (callback) {
+        el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+            log('get simple light state '+className);
+            log(res['message']['data']);
+            if(err){
+                log(err);
+                callback(err);
+                return;
+            }
+            if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+                callback(null, 0);
+                return;
+            }else{
+                callback(null, 1);
+                return;
+            }
+        });
+    }).on('set', function( value, callback) {
+        log('set simple light state '+className);
+        log(value)
+        limiter.removeTokens(1, function() {
+            el.setPropertyValue(address, eoj, 0x80, { 'status': value });
+        });
+        callback(null);
+     });
+};
+EchonetDevs.aircon = function(className, el, accessory, address, eoj, log){
+    el.setPropertyValue(address, eoj, 0xB1, { 'auto': false });
+    var service = accessory.getService(Service.Thermostat) || accessory.addService(Service.Thermostat);
+    service.getCharacteristic(Characteristic.TargetTemperature).on('get', function (callback) {
+        limiter.removeTokens(1, function() {
+            el.getPropertyValue(address, eoj, 0xB3, function (err, res) {
                 if (err) {
                     callback(err);
                     return;
@@ -84,158 +105,157 @@ class EchonetDevs{
                      callback(null, res['message']['data']['temperature']);
                      else
                          callback(null, 20);
-                  });
-            });
-        }).on('set', function (value, callback) {
-            log('set target temperature ' + className + ' ' + value);
-            limiter.removeTokens(1, function() {
-                el.setPropertyValue(address, eoj, 0xB3, { 'temperature': parseInt(value)});
-            });
-            callback(null);
+              });
         });
-        service.setCharacteristic(Characteristic.TemperatureDisplayUnits, Characteristic.TemperatureDisplayUnits.CELSIUS);
-        service.getCharacteristic(Characteristic.CurrentTemperature).on('get', function (callback) {
-            limiter.removeTokens(1, function() {
-                el.getPropertyValue(address, eoj, 0xBB, function (err, res) {
-                    if (err) {
-                        log('Error ' + err);
-                        callback(err);
-                        return;
-                    }
-                    log('get current temperature ' + className, res['message']['data']);
-                    if (res['message']['data'])
-                        callback(null, res['message']['data']['temperature']);
-                    else
-                        callback(null, 20);
-                });
+    }).on('set', function (value, callback) {
+        log('set target temperature ' + className + ' ' + value);
+        limiter.removeTokens(1, function() {
+            el.setPropertyValue(address, eoj, 0xB3, { 'temperature': parseInt(value)});
+        });
+        callback(null);
+    });
+    service.setCharacteristic(Characteristic.TemperatureDisplayUnits, Characteristic.TemperatureDisplayUnits.CELSIUS);
+    service.getCharacteristic(Characteristic.CurrentTemperature).on('get', function (callback) {
+        limiter.removeTokens(1, function() {
+            el.getPropertyValue(address, eoj, 0xBB, function (err, res) {
+                if (err) {
+                    log('Error ' + err);
+                    callback(err);
+                    return;
+                }
+                log('get current temperature ' + className, res['message']['data']);
+                if (res['message']['data'])
+                    callback(null, res['message']['data']['temperature']);
+                else
+                    callback(null, 20);
             });
         });
-        service.getCharacteristic(Characteristic.TargetHeatingCoolingState).on('get', function (callback) {
-            limiter.removeTokens(1, function() {
-                el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+    });
+    service.getCharacteristic(Characteristic.TargetHeatingCoolingState).on('get', function (callback) {
+        limiter.removeTokens(1, function() {
+            el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+            if (err) {
+                    log(err);
+                    callback(err);
+                    return;
+                }
+                if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+                    log('get target heating cooling mode ' + className);
+
+                    callback(null, 0);
+                    return;
+                }
+                el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
                     if (err) {
                         log(err);
                         callback(err);
                         return;
                     }
-                    if (res['message']['data'] == null || (!res['message']['data']['status'])) {
-                        log('get target heating cooling mode ' + className);
-
-                        callback(null, 0);
+                    log('get target heating cooling mode ' + className);
+                    log(res['message']['data']);
+                    if (res['message']['data'] == null) {
+                        callback();
                         return;
                     }
-                    el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
-                        if (err) {
-                            log(err);
-                            callback(err);
-                            return;
-                        }
-                        log('get target heating cooling mode ' + className);
-                        log(res['message']['data']);
-                        if (res['message']['data'] == null) {
-                            callback();
-                            return;
-                        }
-                        var hmode = 0;
-                        switch (res['message']['data']['mode']) {
-                            case 1: //Auto
-                                hmode = 3;
-                                break;
-                            case 2: //Cooling
-                                hmode = 2;
-                                break;
-                            case 3: //Heating
-                                hmode = 1;
-                                break;
-                            default:
-                                //case 0://Other
-                                //case 4://Dehumidify
-                                //case 5://Blast
-                                hmode = 0;
-                                break;
-                        }
-                        callback(null, hmode);
-                    });
+                    var hmode = 0;
+                    switch (res['message']['data']['mode']) {
+                        case 1: //Auto
+                            hmode = 3;
+                            break;
+                        case 2: //Cooling
+                            hmode = 2;
+                            break;
+                        case 3: //Heating
+                            hmode = 1;
+                            break;
+                        default:
+                            //case 0://Other
+                            //case 4://Dehumidify
+                            //case 5://Blast
+                            hmode = 0;
+                            break;
+                    }
+                    callback(null, hmode);
                 });
             });
-        }).on('set', function (value, callback) {
-            log('set target heating cooling mode ' + className + ' ' + value);
-            limiter.removeTokens(1, function() {
-                el.setPropertyValue(address, eoj, 0x80, { 'status': value != 0 });
-            });
-            if (value == 1)
-                limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 3 });});
-            else if (value == 2)
-                limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 2 });});
-            else if (value == 3)
-                limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 1 });});
-            callback();
         });
-        service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).on('get', function (callback) {
-            limiter.removeTokens(1, function() {                        
-                el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+    }).on('set', function (value, callback) {
+        log('set target heating cooling mode ' + className + ' ' + value);
+        limiter.removeTokens(1, function() {
+        el.setPropertyValue(address, eoj, 0x80, { 'status': value != 0 });
+        });
+        if (value == 1)
+            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 3 });});
+        else if (value == 2)
+            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 2 });});
+        else if (value == 3)
+            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 1 });});
+        callback();
+    });
+    service.getCharacteristic(Characteristic.CurrentHeatingCoolingState).on('get', function (callback) {
+        limiter.removeTokens(1, function() {                        
+            el.getPropertyValue(address, eoj, 0x80, function (err, res) {
+                if (err) {
+                    log(err);
+                    callback(err);
+                    return;
+                }
+                if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+                    callback(null, 0);
+                    return;
+                }
+                el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
                     if (err) {
                         log(err);
                         callback(err);
                         return;
                     }
-                    if (res['message']['data'] == null || (!res['message']['data']['status'])) {
-                        callback(null, 0);
+                    log('get current heating cooling mode ' + className);
+                    log(res['message']['data']);
+                    if (res['message']['data'] == null) {
+                        callback();
                         return;
                     }
-                    el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
-                        if (err) {
-                            log(err);
-                            callback(err);
-                            return;
-                        }
-                        log('get current heating cooling mode ' + className);
-                        log(res['message']['data']);
-                        if (res['message']['data'] == null) {
-                            callback();
-                            return;
-                        }
-                        var hmode = 0;
-                        switch (res['message']['data']['mode']) {
-                            case 1: //Auto
-                                hmode = 3;
-                                break;
-                            case 2: //Cooling
-                                hmode = 2;
-                                break;
-                            case 3: //Heating
-                                hmode = 1;
-                                break;
-                            default:
-                                //case 0://Other
-                                //case 4://Dehumidification
-                                //case 5://Blast
-                                hmode = 0;
-                                break;
-                        }
-                        callback(null, hmode);
-                    });
+                    var hmode = 0;
+                    switch (res['message']['data']['mode']) {
+                        case 1: //Auto
+                            hmode = 3;
+                            break;
+                        case 2: //Cooling
+                            hmode = 2;
+                            break;
+                        case 3: //Heating
+                            hmode = 1;
+                            break;
+                        default:
+                            //case 0://Other
+                            //case 4://Dehumidification
+                            //case 5://Blast
+                            hmode = 0;
+                            break;
+                    }
+                    callback(null, hmode);
                 });
             });
-        }).on('set', function (value, callback) {
-            log('set current heating cooling mode ' + className + ' ' + value);
-                
-            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0x80, { 'status': value != 0 });});
-            if (value == 1)
-                limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 3 });});
-            else if (value == 2)
-                limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 2 });});
-            else if (value == 3)
-                limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 1 });});
-            callback();
         });
+    }).on('set', function (value, callback) {
+        log('set current heating cooling mode ' + className + ' ' + value);
+            
+        limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0x80, { 'status': value != 0 });});
+        if (value == 1)
+            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 3 });});
+        else if (value == 2)
+            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 2 });});
+        else if (value == 3)
+            limiter.removeTokens(1, function() {el.setPropertyValue(address, eoj, 0xB0, { 'mode': 1 });});
+        callback();
+    });
 
-            // Optional Characteristics
-            //Characteristic.CurrentRelativeHumidity
-            //Characteristic.TargetRelativeHumidity
-            //Characteristic.CoolingThresholdTemperature
-            //Characteristic.HeatingThresholdTemperature
-    }
+        // Optional Characteristics
+        //Characteristic.CurrentRelativeHumidity
+        //Characteristic.TargetRelativeHumidity
+        //Characteristic.CoolingThresholdTemperature
+        //Characteristic.HeatingThresholdTemperature
 };
 
 var EchonetPlatform = /** @class */ (function () {
@@ -246,12 +266,14 @@ var EchonetPlatform = /** @class */ (function () {
         var _this = this;
         this.accessories = new Map();
         this.el = new EchonetLite({ 'type': 'lan' });
+        log(typeof(this.accessories));
         log("EchonetPlatform Init");
         var platform = this;
         this.log = log;
         this.config = config;
         this.api = api;
         this.el.setLang('en');
+        this.el.el_accessories = new Map();
         this.api.on('didFinishLaunching', function () {
             _this.el.init(function (err) {
                 if (err)
@@ -260,6 +282,21 @@ var EchonetPlatform = /** @class */ (function () {
                     _this.discovery();
             });
             _this.log('finish launching');
+        });
+        var seoj = [14, 240, 1];
+        this.el.el_accessories.set(seoj.toString(), function(res){
+            log('-----test----', res['message']);
+        });
+        this.el.on('notify', function(res) {
+//            log(res['message'], res['device']);
+            var seoj = res['message']['seoj'];
+            var address = res['device']['address'];
+            if(_this.el.el_accessories.has(address.toString() + seoj.toString())){
+                _this.el.el_accessories.get(address.toString() + seoj.toString())(res);
+            };
+            if(_this.el.el_accessories.has(seoj.toString())){
+                _this.el.el_accessories.get(seoj.toString())(res);
+            };
         });
     }
     EchonetPlatform.prototype.discovery = function () {
@@ -360,8 +397,8 @@ var EchonetPlatform = /** @class */ (function () {
                 EchonetDevs.aircon(className, _this.el, accessory, address, eoj, _this.log);
                 break;
             case GC_DOORBELL:
-                _this.log('DOORBELL ' + codes.toString(16));
-//                EchonetDevs.doorbell(className, _this.el, accessory, address, eoj, _this.log);
+//                _this.log('DOORBELL ' + codes.toString(16));
+                EchonetDevs.doorbell(className, _this.el, accessory, address, eoj, _this.log);
                 break;
             default:
                 _this.log('OTHERS ' + codes.toString(16));
