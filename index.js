@@ -17,21 +17,49 @@ EchonetDevs.doorbell = function(className, el, accessory, address, eoj, log){
     var service = accessory.getService(Service.MotionSensor) || accessory.addService(Service.MotionSensor);
     var state = true;
     service.getCharacteristic(Characteristic.MotionDetected).on('get', function (callback) {
-        callback(null, state);
-        return;
+        el.getPropertyValue(address, eoj, 0xB1, function (err, res) {
+            log('get switch state '+className);
+            if(err){
+                log(err);
+                callback(err);
+                return;
+            }
+            state = res['message']['data'];
+            service
+                .setCharacteristic(Characteristic.MotionDetected, state);
+            callback(null, state);
+            return;
+//            if (res['message']['data'] == null || (!res['message']['data']['status'])) {
+//                callback(null, 0);
+//                return;
+//            }else{
+//                callback(null, 1);
+//                return;
+//            }
+        });
     });
     el.el_accessories.set(address.toString() + eoj.toString(), function(res){
         log('VisitingSensor', res['message']);
+        log('test', res['message']);
+        for( var i in res['message']['prop']) {
+            log(res['message']['prop'][i]);
+            var prop = res['message']['prop'][i];
+            if(prop['epc'] == 0xB1) {
+                state = prop['buffer'][0] == 0x41;
+            }
+        };
         service.setCharacteristic(Characteristic.MotionDetected, state);
     });
-    // For testing, on/off every 3 seconds.
+/*
+    // For testing, on/off every 30 seconds.
     // https://github.com/homebridge/HAP-NodeJS/blob/8c8e84efb1f2e62f4af36e2e120d4c90a6473006/src/accessories/TemperatureSensor_accessory.ts
     setInterval(function() {
         state = !state;
         service
             .setCharacteristic(Characteristic.MotionDetected, state);
 
-    }, 3000);
+    }, 30000);
+*/
 };
 
 EchonetDevs.jema = function(className, el, accessory, address, eoj, log){
@@ -283,12 +311,16 @@ var EchonetPlatform = /** @class */ (function () {
             });
             _this.log('finish launching');
         });
+/*
         var seoj = [14, 240, 1];
         this.el.el_accessories.set(seoj.toString(), function(res){
-            log('-----test----', res['message']);
+            log('test', res['message']);
+            for( var i in res['message']['prop']) {
+                log(res['message']['prop'][i]);
+            };
         });
+*/
         this.el.on('notify', function(res) {
-//            log(res['message'], res['device']);
             var seoj = res['message']['seoj'];
             var address = res['device']['address'];
             if(_this.el.el_accessories.has(address.toString() + seoj.toString())){
