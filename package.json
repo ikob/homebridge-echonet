@@ -21,7 +21,7 @@
   "homepage": "https://github.com/reubenbijl/homebridge-echonet#readme",
   "devDependencies": {
     "hap-nodejs": "^0.4.41",
-    "node-echonet-lite": "git+https://github.com/TakekazuKATO/node-echonet-lite.git#addparsers"
+    "node-echonet-lite": "git+https://github.com/ikob/node-echonet-lite.git"
   },
   "engines": {
     "node": ">=0.12.0",
