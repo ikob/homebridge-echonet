@@ -1,4 +1,7 @@
 "use strict";
+
+var eventDebug = require('event-debug')
+
 var EchonetLite = require('node-echonet-lite');
 var Accessory;
 var Service;
@@ -11,9 +14,112 @@ const GC_SWJEMA = 0x05fd;
 const GC_SIMPLELIGHT = 0x0291;
 const GC_AIRCON = 0x0130;
 const GC_DOORBELL = 0x0008;
+const GC_MAIL = 0x000f;
+const GC_ALARM = 0x0002;
 
 var EchonetDevs = function(){};
-EchonetDevs.doorbell = function(className, el, accessory, address, eoj, log){
+eventDebug(EchonetDevs, 'ECHONET')
+EchonetDevs.alarm = function(className, el, accessory, address, eoj, log){
+    var service = accessory.getService(Service.SecuritySystem) || accessory.addService(Service.SecuritySystem);
+    var state = true;
+    service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({
+        'validValues':[0,1,3]
+    });
+    service.getCharacteristic(Characteristic.SecuritySystemCurrentState).setProps({
+        'validValues':[0,1,3,4]
+    });
+    service.getCharacteristic(Characteristic.SecuritySystemTargetState)
+//        .on('get', function (callback) {
+//            log('get current Target state '+className);
+//            callback(null, service.getCharacteristic(Characteristic.SecuritySystemCurrentState));
+//            return;
+//        })
+        .on('set', function (value, callback) {
+            log('set current Target state '+className);
+            service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
+//            setTimeout(function() {
+//                try {
+//                    log("force to sync");
+//                    value = get_alert().then(val => {
+//                        log('++++++' + val);
+//                        value = val;
+//                    });
+//                }catch(err){
+//                    callback(err);
+//                    return;
+//                }
+//                service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
+//                callback(null);
+//                return;
+//            }, 500);
+            callback(null);
+            return;
+        });
+    service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
+        .on('get', function (callback) {
+            var value;
+            log('get current state '+className);
+            try {
+                log("force to sync");
+                get_alert().then(val => {
+                    log('-------' + val);
+                    value = val;
+                });
+            }catch(err){
+                callback(err);
+                return;
+            }
+            service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
+            service.setCharacteristic(Characteristic.SecuritySystemTargetState, value);
+            callback(null, value);
+            return;
+        });
+    el.el_accessories.set(address.toString() + eoj.toString(), function(res){
+        log('AlarmSensor', res['message']);
+        log('test', res['message']);
+        for( var i in res['message']['prop']) {
+            log(res['message']['prop'][i]);
+            var prop = res['message']['prop'][i];
+            if(prop['epc'] == 0xB1) {
+                state = prop['buffer'][0] == 0x41;
+            }
+        };
+        service.setCharacteristic(Characteristic.MotionDetected,
+            state ? 4 : service.getCharacteristic(Characteristic.SecuritySystemTargetState));
+    });
+    async function get_alert(callback){
+        try {
+            var alert = await el.getPropertyValue(address, eoj, 0xB1);
+            var state = await el.getPropertyValue(address, eoj, 0xB0);
+        } catch(err) {
+            throw(err);
+        }
+        if(alert == 0x42) return 4;
+        else if(state == 0x32) return 0;
+        else return 3;
+    };
+/**/
+    // For testing, on/off every 30 seconds.
+    // https://github.com/homebridge/HAP-NodeJS/blob/8c8e84efb1f2e62f4af36e2e120d4c90a6473006/src/accessories/TemperatureSensor_accessory.ts
+    setInterval(function() {
+        var value;
+        try {
+            log("force to sync");
+            get_alert().then(val => {
+                log('-------' + val);
+                value = val;
+            });
+        }catch(err){
+            callback(err);
+            return;
+        }
+        service.setCharacteristic(Characteristic.SecuritySystemTargetState, value);
+        service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
+
+    }, 3000);
+/**/
+};
+EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
     var service = accessory.getService(Service.MotionSensor) || accessory.addService(Service.MotionSensor);
     var state = true;
     service.getCharacteristic(Characteristic.MotionDetected).on('get', function (callback) {
@@ -29,13 +135,6 @@ EchonetDevs.doorbell = function(className, el, accessory, address, eoj, log){
                 .setCharacteristic(Characteristic.MotionDetected, state);
             callback(null, state);
             return;
-//            if (res['message']['data'] == null || (!res['message']['data']['status'])) {
-//                callback(null, 0);
-//                return;
-//            }else{
-//                callback(null, 1);
-//                return;
-//            }
         });
     });
     el.el_accessories.set(address.toString() + eoj.toString(), function(res){
@@ -209,7 +308,8 @@ EchonetDevs.aircon = function(className, el, accessory, address, eoj, log){
         });
     }).on('set', function (value, callback) {
         log('set target heating cooling mode ' + className + ' ' + value);
-        limiter.removeTokens(1, function() {
+//        limiter.removeTokens(1, function() {
+        limiter.removeTokens(1, () => {
         el.setPropertyValue(address, eoj, 0x80, { 'status': value != 0 });
         });
         if (value == 1)
@@ -417,20 +517,26 @@ var EchonetPlatform = /** @class */ (function () {
         var codes = group_code << 8 | class_code;
         switch(codes){
             case GC_SWJEMA:
-//                _this.log('JEMA ' + codes.toString(16));
+                _this.log('JEMA ' + codes.toString(16));
                 EchonetDevs.jema(className, _this.el, accessory, address, eoj, _this.log);
                 break;
             case GC_SIMPLELIGHT:
-//                _this.log('LIGHT ' + codes.toString(16));
+                _this.log('LIGHT ' + codes.toString(16));
                 EchonetDevs.simplelight(className, _this.el, accessory, address, eoj, _this.log);
                 break;
             case GC_AIRCON:
-//                _this.log('AIRCON ' + codes.toString(16));
+                _this.log('AIRCON ' + codes.toString(16));
                 EchonetDevs.aircon(className, _this.el, accessory, address, eoj, _this.log);
                 break;
+            case GC_ALARM:
+                _this.log('ALARM ' + codes.toString(16));
+                EchonetDevs.motion(className, _this.el, accessory, address, eoj, _this.log);
+//                EchonetDevs.alarm(className, _this.el, accessory, address, eoj, _this.log);
+                break;
             case GC_DOORBELL:
-//                _this.log('DOORBELL ' + codes.toString(16));
-                EchonetDevs.doorbell(className, _this.el, accessory, address, eoj, _this.log);
+            case GC_MAIL:
+                _this.log('DOORBELL ' + codes.toString(16));
+                EchonetDevs.motion(className, _this.el, accessory, address, eoj, _this.log);
                 break;
             default:
                 _this.log('OTHERS ' + codes.toString(16));
