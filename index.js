@@ -18,7 +18,7 @@ const GC_MAIL = 0x000f;
 const GC_ALARM = 0x0002;
 
 var EchonetDevs = function(){};
-eventDebug(EchonetDevs, 'ECHONET')
+//eventDebug(EchonetDevs, 'ECHONET')
 EchonetDevs.alarm = function(className, el, accessory, address, eoj, log){
     var service = accessory.getService(Service.SecuritySystem) || accessory.addService(Service.SecuritySystem);
     var state = true;
