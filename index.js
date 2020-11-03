@@ -1,6 +1,6 @@
 "use strict";
 
-var eventDebug = require('event-debug')
+//var eventDebug = require('event-debug')
 
 var EchonetLite = require('node-echonet-lite');
 var Accessory;
