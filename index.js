@@ -152,7 +152,7 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
             callback(null, state);
             return;
         });
-    }
+    });
     el.el_accessories.set(address.toString() + eoj.toString(), function(res){
         log('VisitingSensor', res['message']);
         log('test', res['message']);
