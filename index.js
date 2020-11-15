@@ -122,6 +122,7 @@ EchonetDevs.alarm = function(className, el, accessory, address, eoj, log){
 EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
     var service = accessory.getService(Service.MotionSensor) || accessory.addService(Service.MotionSensor);
     var state = true;
+    var threshold = 0x31;
     service.getCharacteristic(Characteristic.MotionDetected).on('get', function (callback) {
         el.getPropertyValue(address, eoj, 0xB1, function (err, res) {
             log('get switch state '+className);
@@ -137,6 +138,21 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
             return;
         });
     });
+    service.getCharacteristic(Characteristic.StatusActive).on('get', function (callback) {
+        el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
+            log('get switch state '+className);
+            if(err){
+                log(err);
+                callback(err);
+                return;
+            }
+            threshold = res['message']['value'];
+            service
+                .setCharacteristic(Characteristic.MotionDetected, threshold > 0x31);
+            callback(null, state);
+            return;
+        });
+    }
     el.el_accessories.set(address.toString() + eoj.toString(), function(res){
         log('VisitingSensor', res['message']);
         log('test', res['message']);
