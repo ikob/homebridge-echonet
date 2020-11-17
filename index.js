@@ -132,8 +132,8 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
                 return;
             }
             state = res['message']['data'];
-            service
-                .setCharacteristic(Characteristic.MotionDetected, state);
+//            service
+//                .setCharacteristic(Characteristic.MotionDetected, state);
             callback(null, state);
             return;
         });
@@ -147,9 +147,9 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
                 return;
             }
             threshold = res['message']['value'];
-            service
-                .setCharacteristic(Characteristic.MotionDetected, threshold > 0x31);
-            callback(null, state);
+//            service
+//                .setCharacteristic(Characteristic.StatusActive, threshold > 0x31);
+            callback(null, threshold > 0x31);
             return;
         });
     });
