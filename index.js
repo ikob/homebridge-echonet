@@ -139,6 +139,13 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
         });
     });
     service.getCharacteristic(Characteristic.StatusActive).on('get', function (callback) {
+        var group_code = eoj[0];
+        var class_code = eoj[1];
+        var codes = group_code << 8 | class_code;
+        if(codes == GC_DOORBELL || codes == GC_MAIL){
+            callback(null, true);
+            return;
+        }
         el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
             log('get armed status '+className);
             if(err){
