@@ -125,7 +125,7 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
     var threshold = 0x31;
     service.getCharacteristic(Characteristic.MotionDetected).on('get', function (callback) {
         el.getPropertyValue(address, eoj, 0xB1, function (err, res) {
-            log('get switch state '+className);
+            log('get sensor detection '+className);
             if(err){
                 log(err);
                 callback(err);
@@ -140,16 +140,16 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
     });
     service.getCharacteristic(Characteristic.StatusActive).on('get', function (callback) {
         el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
-            log('get switch state '+className);
+            log('get armed status '+className);
             if(err){
                 log(err);
                 callback(err);
                 return;
             }
-            threshold = res['message']['value'];
+            var val = res['message']['data']['value'];
 //            service
-//                .setCharacteristic(Characteristic.StatusActive, threshold > 0x31);
-            callback(null, threshold > 0x31);
+//                .setCharacteristic(Characteristic.StatusActive, val > threshold);
+            callback(null, val > threshold);
             return;
         });
     });
