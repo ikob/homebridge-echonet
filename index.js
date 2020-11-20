@@ -142,15 +142,15 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
         var group_code = eoj[0];
         var class_code = eoj[1];
         var codes = group_code << 8 | class_code;
-        if(codes == GC_DOORBELL || codes == GC_MAIL){
-            callback(null, true);
-            return;
-        }
         el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
             log('get armed status '+className);
             if(err){
                 log(err);
                 callback(err);
+                return;
+            }
+            if(res['message']['esv'] != 'Get_Res') {
+                callback(null, true);
                 return;
             }
             var val = res['message']['data']['value'];
