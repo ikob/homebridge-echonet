@@ -20,104 +20,74 @@ const GC_ALARM = 0x0002;
 var EchonetDevs = function(){};
 //eventDebug(EchonetDevs, 'ECHONET')
 EchonetDevs.alarm = function(className, el, accessory, address, eoj, log){
-    var service = accessory.getService(Service.SecuritySystem) || accessory.addService(Service.SecuritySystem);
-    var state = true;
-    service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps({
-        'validValues':[0,1,3]
-    });
-    service.getCharacteristic(Characteristic.SecuritySystemCurrentState).setProps({
-        'validValues':[0,1,3,4]
-    });
-    service.getCharacteristic(Characteristic.SecuritySystemTargetState)
-//        .on('get', function (callback) {
-//            log('get current Target state '+className);
-//            callback(null, service.getCharacteristic(Characteristic.SecuritySystemCurrentState));
-//            return;
-//        })
-        .on('set', function (value, callback) {
-            log('set current Target state '+className);
-            service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
-//            setTimeout(function() {
-//                try {
-//                    log("force to sync");
-//                    value = get_alert().then(val => {
-//                        log('++++++' + val);
-//                        value = val;
-//                    });
-//                }catch(err){
-//                    callback(err);
-//                    return;
-//                }
-//                service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
-//                callback(null);
-//                return;
-//            }, 500);
-            callback(null);
-            return;
-        });
+    const table = {0x31: 3, 0x32: 0, 0x33: 1};
+    var alarm = false;
+    var service = accessory.getService(Service.SecuritySystem);
+    if(!service){
+        service =  accessory.addService(Service.SecuritySystem);
+        if(0){
+// Hack for disappering slider switch on GUI, but always look like state transition.
+        service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
+            { 'validValues':[3], minValue:3, maxValue:3 }
+        );
+        service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
+        }else{
+// Worked fine, but look like GUI can control security system.
+        service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
+            { 'validValues':[0,1,3], minValue:0, maxValue:3}
+//            { 'validValues':[0,1,3], minValue:0, maxValue:3 , perms:['pr', 'pw', 'ev']}
+        );
+        service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
+        }
+
+        service.getCharacteristic(Characteristic.SecuritySystemCurrentState).setProps(
+            { 'validValues':[0,1,3,4] }
+        );
+    }
     service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
-        .on('get', function (callback) {
-            var value;
-            log('get current state '+className);
-            try {
-                log("force to sync");
-                get_alert().then(val => {
-                    log('-------' + val);
-                    value = val;
-                });
-            }catch(err){
+    .on('get', function (callback) {
+        el.getPropertyValue(address, eoj, 0xB1, function (err, res) {
+            log('get sensor detection '+className);
+            if(err){
+                log(err);
                 callback(err);
                 return;
             }
-            service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
-            service.setCharacteristic(Characteristic.SecuritySystemTargetState, value);
-            callback(null, value);
-            return;
+            alarm = res['message']['data']['status'];
+            el.getPropertyValue(address, eoj, 0xB0, function (err, res) {
+                if(err){
+                    log(err);
+                    callback(err);
+                    return;
+                }
+                const state = table[res['message']['data']['value']];
+                service.setCharacteristic(Characteristic.SecuritySystemTargetState, state);
+                callback(null, alarm ? 4 :state);
+                return;
+            });
         });
+    })
     el.el_accessories.set(address.toString() + eoj.toString(), function(res){
-        log('AlarmSensor', res['message']);
-        log('test', res['message']);
+        var state = -1;
+        log('AlarmSystem ', res['message']);
+//        log(res);
         for( var i in res['message']['prop']) {
-            log(res['message']['prop'][i]);
+//            log(res['message']['prop'][i]);
             var prop = res['message']['prop'][i];
             if(prop['epc'] == 0xB1) {
-                state = prop['buffer'][0] == 0x41;
+                alarm = prop['buffer'][0] == 0x41;
+            }
+            if(prop['epc'] == 0xB0) {
+                state = table[prop['buffer'][0]];
             }
         };
-        service.setCharacteristic(Characteristic.MotionDetected,
-            state ? 4 : service.getCharacteristic(Characteristic.SecuritySystemTargetState));
+        if(state != -1) service.setCharacteristic(Characteristic.SecuritySystemTargetState, state);
+        if(alarm){
+            service.setCharacteristic(Characteristic.SecuritySystemCurrentState, 4);
+        }else if(state != -1){
+            service.setCharacteristic(Characteristic.SecuritySystemCurrentState, state);
+        }
     });
-    async function get_alert(callback){
-        try {
-            var alert = await el.getPropertyValue(address, eoj, 0xB1);
-            var state = await el.getPropertyValue(address, eoj, 0xB0);
-        } catch(err) {
-            throw(err);
-        }
-        if(alert == 0x42) return 4;
-        else if(state == 0x32) return 0;
-        else return 3;
-    };
-/**/
-    // For testing, on/off every 30 seconds.
-    // https://github.com/homebridge/HAP-NodeJS/blob/8c8e84efb1f2e62f4af36e2e120d4c90a6473006/src/accessories/TemperatureSensor_accessory.ts
-    setInterval(function() {
-        var value;
-        try {
-            log("force to sync");
-            get_alert().then(val => {
-                log('-------' + val);
-                value = val;
-            });
-        }catch(err){
-            callback(err);
-            return;
-        }
-        service.setCharacteristic(Characteristic.SecuritySystemTargetState, value);
-        service.setCharacteristic(Characteristic.SecuritySystemCurrentState, value);
-
-    }, 3000);
-/**/
 };
 EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
     var service = accessory.getService(Service.MotionSensor) || accessory.addService(Service.MotionSensor);
@@ -162,7 +132,7 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
     });
     el.el_accessories.set(address.toString() + eoj.toString(), function(res){
         log('VisitingSensor', res['message']);
-        log('test', res['message']);
+        log(res);
         for( var i in res['message']['prop']) {
             log(res['message']['prop'][i]);
             var prop = res['message']['prop'][i];
@@ -434,15 +404,6 @@ var EchonetPlatform = /** @class */ (function () {
             });
             _this.log('finish launching');
         });
-/*
-        var seoj = [14, 240, 1];
-        this.el.el_accessories.set(seoj.toString(), function(res){
-            log('test', res['message']);
-            for( var i in res['message']['prop']) {
-                log(res['message']['prop'][i]);
-            };
-        });
-*/
         this.el.on('notify', function(res) {
             var seoj = res['message']['seoj'];
             var address = res['device']['address'];
@@ -553,8 +514,8 @@ var EchonetPlatform = /** @class */ (function () {
                 break;
             case GC_ALARM:
                 _this.log('ALARM ' + codes.toString(16));
-                EchonetDevs.motion(className, _this.el, accessory, address, eoj, _this.log);
-//                EchonetDevs.alarm(className, _this.el, accessory, address, eoj, _this.log);
+//                EchonetDevs.motion(className, _this.el, accessory, address, eoj, _this.log);
+                EchonetDevs.alarm(className, _this.el, accessory, address, eoj, _this.log);
                 break;
             case GC_DOORBELL:
             case GC_MAIL:
