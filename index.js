@@ -35,7 +35,10 @@ EchonetDevs.alarm = function(className, el, accessory, address, eoj, log){
 // Worked fine, but look like GUI can control security system.
         service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
             { 'validValues':[0,1,3], minValue:0, maxValue:3}
-//            { 'validValues':[0,1,3], minValue:0, maxValue:3 , perms:['pr', 'pw', 'ev']}
+/*
+// Not working as remaining transition state, when switching alarm mode.
+            { 'validValues':[0,1,3], minValue:0, maxValue:3 , perms:['pr', 'ev']}
+*/
         );
         service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
         }
@@ -101,7 +104,8 @@ EchonetDevs.motion = function(className, el, accessory, address, eoj, log){
                 callback(err);
                 return;
             }
-            state = res['message']['data'];
+            log(res['message']);
+            state = res['message']['data']['status'];
 //            service
 //                .setCharacteristic(Characteristic.MotionDetected, state);
             callback(null, state);
@@ -159,7 +163,7 @@ EchonetDevs.jema = function(className, el, accessory, address, eoj, log){
     service.getCharacteristic(Characteristic.On).on('get', function (callback) {
         el.getPropertyValue(address, eoj, 0x80, function (err, res) {
             log('get switch state '+className);
-            log(res['message']['data']);
+//            log(res['message']['data']);
             if(err){
                     log(err);
                     callback(err);
@@ -187,7 +191,7 @@ EchonetDevs.simplelight = function(className, el, accessory, address, eoj, log){
     service.getCharacteristic(Characteristic.On).on('get', function (callback) {
         el.getPropertyValue(address, eoj, 0x80, function (err, res) {
             log('get simple light state '+className);
-            log(res['message']['data']);
+//            log(res['message']['data']);
             if(err){
                 log(err);
                 callback(err);
