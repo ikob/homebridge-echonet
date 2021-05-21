@@ -454,11 +454,11 @@ var EchonetPlatform = /** @class */ (function () {
                         if (err)
                             _this.log(err);
                         else {
-                            var uid = void 0;
-                            var vendor = void 0;
+                            let uid = void 0;
+                            let vendor = void 0;
                             if (res['message']['data']) {
                                 uid = res['message']['data']['uid'];
-                                vendor = res['message']['data']['name'];
+                                vendor = res['message']['data']['name'] || "Unknown";
                             } else {
                                 uid = address_1 + ':' + count_1;
                                 count_1 = count_1 + 1;
