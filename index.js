@@ -228,7 +228,7 @@ EchonetDevs.aircon = function (className, el, accessory, address, eoj, log) {
                     return;
                 }
                 log("get target temperature " + className + " ", res['message']['data']);
-                if (res['message']['data'])
+                if (res['message']['data'] && res['message']['data']['temperature'] != null)
                     callback(null, res['message']['data']['temperature']);
                 else
                     callback(null, 20);
