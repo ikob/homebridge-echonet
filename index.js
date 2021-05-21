@@ -3,6 +3,7 @@
 //var eventDebug = require('event-debug')
 
 var EchonetLite = require('node-echonet-lite');
+var HAP = require('hap-nodejs');
 var Accessory;
 var Service;
 var Characteristic;
@@ -29,14 +30,15 @@ EchonetDevs.alarm = function (className, el, accessory, address, eoj, log) {
         if (0) {
 // Hack for disappering slider switch on GUI, but always look like state transition.
             service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
-                {'validValues': [3], minValue: 3, maxValue: 3}
+                {'validValues': [0, 1, 3], minValue: 0, maxValue: 3}
             );
             service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
         } else {
 // Worked fine, but look like GUI can control security system.
             service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
-                {'validValues': [0, 1, 3], minValue: 0, maxValue: 3}
+                {'validValues': [3], minValue: 3, maxValue: 3}
                 /*
+                {'validValues': [0, 1, 3], minValue: 0, maxValue: 3}
                 // Not working as remaining transition state, when switching alarm mode.
                             { 'validValues':[0,1,3], minValue:0, maxValue:3 , perms:['pr', 'ev']}
                 */
@@ -48,6 +50,15 @@ EchonetDevs.alarm = function (className, el, accessory, address, eoj, log) {
             {'validValues': [0, 1, 3, 4]}
         );
     }
+/*
+    service.getCharacteristic(Characteristic.SecuritySystemTargetState)
+        .on('set', function (value, callback) {
+            if(targetlock)
+                callback(Error);
+            else
+                callback(null);
+    });
+*/
     service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
         .on('get', function (callback) {
             el.getPropertyValue(address, eoj, 0xB1, function (err, res) {
@@ -65,7 +76,6 @@ EchonetDevs.alarm = function (className, el, accessory, address, eoj, log) {
                         return;
                     }
                     const state = table[res['message']['data']['value']];
-                    service.setCharacteristic(Characteristic.SecuritySystemTargetState, state);
                     callback(null, alarm ? 4 : state);
                     return;
                 });
@@ -85,8 +95,6 @@ EchonetDevs.alarm = function (className, el, accessory, address, eoj, log) {
                 state = table[prop['buffer'][0]];
             }
         }
-        ;
-        if (state != -1) service.setCharacteristic(Characteristic.SecuritySystemTargetState, state);
         if (alarm) {
             service.setCharacteristic(Characteristic.SecuritySystemCurrentState, 4);
         } else if (state != -1) {
@@ -106,7 +114,7 @@ EchonetDevs.motion = function (className, el, accessory, address, eoj, log) {
                 callback(err);
                 return;
             }
-            log(res['message']);
+//            log(res['message']);
             state = res['message']['data']['status'];
 //            service
 //                .setCharacteristic(Characteristic.MotionDetected, state);
@@ -151,7 +159,7 @@ EchonetDevs.motion = function (className, el, accessory, address, eoj, log) {
     });
     /*
         // For testing, on/off every 30 seconds.
-        // https://github.com/homebridge/HAP-NodeJS/blob/8c8e84efb1f2e62f4af36e2e120d4c90a6473006/src/accessories/TemperatureSensor_accessory.ts
+        // https://github.com/homebridge/HAP-NodeJS/blob/8c8e84efb1f2e62f4af36e2e120d4c90a6473006/src/accessories/TemperatureSensor_accessory.tr
         setInterval(function() {
             state = !state;
             service
