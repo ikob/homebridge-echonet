@@ -10,6 +10,7 @@ var Characteristic;
 var UUIDGen;
 var RateLimiter = require('limiter').RateLimiter;
 var limiter = new RateLimiter(1, 500);
+var API = require('homebridge');
 
 const GC_SWJEMA = 0x05fd;
 const GC_SIMPLELIGHT = 0x0291;
@@ -24,41 +25,32 @@ var EchonetDevs = function () {
 EchonetDevs.alarm = function (className, el, accessory, address, eoj, log) {
     const table = {0x31: 3, 0x32: 0, 0x33: 1};
     var alarm = false;
+    let targetlock = true;
     var service = accessory.getService(Service.SecuritySystem);
     if (!service) {
         service = accessory.addService(Service.SecuritySystem);
-        if (0) {
-// Hack for disappering slider switch on GUI, but always look like state transition.
-            service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
-                {'validValues': [0, 1, 3], minValue: 0, maxValue: 3}
-            );
-            service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
-        } else {
 // Worked fine, but look like GUI can control security system.
-            service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
-                {'validValues': [3], minValue: 3, maxValue: 3}
-                /*
-                {'validValues': [0, 1, 3], minValue: 0, maxValue: 3}
-                // Not working as remaining transition state, when switching alarm mode.
-                            { 'validValues':[0,1,3], minValue:0, maxValue:3 , perms:['pr', 'ev']}
-                */
-            );
-            service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
-        }
-
+        service.getCharacteristic(Characteristic.SecuritySystemTargetState).setProps(
+            {'validValues': [0, 1, 3], minValue: 0, maxValue: 3, perms:['pr', 'pw', 'ev']}
+            /*
+            // Not working as remaining transition state, when switching alarm mode.
+                        { 'validValues':[0,1,3], minValue:0, maxValue:3 , perms:['pr', 'ev']}
+            */
+        );
+        targetlock = false;
+        service.setCharacteristic(Characteristic.SecuritySystemTargetState, 3);
+        targetlock = true;
         service.getCharacteristic(Characteristic.SecuritySystemCurrentState).setProps(
             {'validValues': [0, 1, 3, 4]}
         );
     }
-/*
     service.getCharacteristic(Characteristic.SecuritySystemTargetState)
         .on('set', function (value, callback) {
             if(targetlock)
-                callback(Error);
+                callback(HAP.HapStatusError);
             else
                 callback(null);
     });
-*/
     service.getCharacteristic(Characteristic.SecuritySystemCurrentState)
         .on('get', function (callback) {
             el.getPropertyValue(address, eoj, 0xB1, function (err, res) {
@@ -95,6 +87,9 @@ EchonetDevs.alarm = function (className, el, accessory, address, eoj, log) {
                 state = table[prop['buffer'][0]];
             }
         }
+        targetlock = false;
+        service.setCharacteristic(Characteristic.SecuritySystemTargetState, state);
+        targetlock = true;
         if (alarm) {
             service.setCharacteristic(Characteristic.SecuritySystemCurrentState, 4);
         } else if (state != -1) {
@@ -410,6 +405,7 @@ EchonetDevs.aircon = function (className, el, accessory, address, eoj, log) {
 
 var EchonetPlatform = /** @class */ (function () {
     // Platform constructor
+    var api = API;
     // config may be null
     // api may be null if launched from old homebridge version
     function EchonetPlatform(log, config, api) {
