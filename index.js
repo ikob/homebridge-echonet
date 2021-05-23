@@ -481,7 +481,7 @@ var EchonetPlatform = /** @class */ (function () {
         setTimeout(function () {
             _this.el.stopDiscovery();
             //this.discovery();
-        }, 2000);
+        }, 10000);
     };
     // Function invoked when homebridge tries to restore cached accessory.
     // Developer can configure accessory at here (like setup event handler).
